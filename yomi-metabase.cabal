@@ -20,6 +20,9 @@ executable yomi-metabase
   build-depends:       base >= 4.7 && < 5
                      , array
                      , moo
+                     , mersenne-random-pure64
+                     , monad-mersenne-random
+                     , monad-extras
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
 
 test-suite yomi-metabase-test
