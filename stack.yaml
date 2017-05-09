@@ -1,0 +1,18 @@
+flags: {}
+extra-package-dbs: []
+packages:
+- '.'
+- location:
+    git: https://github.com/lwm/tasty-discover.git
+    commit: HEAD
+  extra-dep: true
+- location:
+    git: https://github.com/astanin/moo.git
+    commit: HEAD
+  extra-dep: true
+extra-deps:
+- gray-code-0.3.1
+- monad-mersenne-random-0.1
+- moo-1.0
+- tasty-discover-3.0.0
+resolver: lts-1.15
