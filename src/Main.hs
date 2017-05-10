@@ -5,7 +5,7 @@ import Control.Monad.Mersenne.Random (evalRandom)
 import Data.Array (Array, listArray, range, (//), (!))
 import Data.Function (on)
 import Data.Ix (Ix)
-import Data.List (intercalate, groupBy, sort, nub, sortBy, nubBy)
+import Data.List (intercalate, groupBy, sort, nub, sortBy, nubBy, maximumBy)
 import Data.Ord (comparing, Down(..))
 import Data.Ratio (numerator, denominator)
 import Numeric (showFFloat)
@@ -83,7 +83,9 @@ prettyPrintPlayer player = intercalate "\n" $ ("blind picks: " ++ blind) : count
         formatField (char, chance) = show char ++ ": " ++ (showFFloat (Just 10) chance) ""
         formatRow row = intercalate ", " $ map formatField $ sortBy (comparing (Down . snd)) $ filter ((>0) . snd) $ zip cast row
 
-winRate = listArray cast2D [
+winRate c c' = rates ! (c, c') / 10
+    where
+        rates = listArray cast2D [
 {-               Arg, BBB, DeG, Gei, Glo, Gra, Gwe, Jai, Lum, Men, Mid, Oni, Per, Qui, Roo, Set, Tro, Val, Ven, Zan -}
 {-Argagarg-}     5.0, 4.5, 4.9, 5.5, 4.2, 5.7, 5.6, 6.9, 6.8, 5.5, 6.2, 6.5, 5.8, 3.4, 5.8, 4.5, 4.5, 5.3, 5.8, 4.1
 {-BBB-}        , 5.5, 5.0, 4.4, 3.1, 6.5, 4.0, 6.0, 5.2, 4.4, 4.4, 6.3, 4.6, 5.8, 6.2, 6.0, 4.6, 5.6, 6.1, 5.4, 4.2
@@ -125,7 +127,7 @@ winRate = listArray cast2D [
 -- {-Valerie-}    , 5.25, 6.00, 4.50, 4.75, 5.25, 4.25, 6.00, 4.75, 4.50, 5.50, 5.00, 4.25, 5.75, 5.75, 5.50, 5.00, 4.50, 5.00, 6.25, 5.00
 -- {-Vendetta-}   , 5.25, 5.50, 4.75, 4.75, 4.50, 4.25, 4.75, 5.00, 3.75, 5.00, 4.75, 4.75, 5.25, 5.50, 5.50, 4.50, 4.50, 3.75, 5.00, 4.75
 -- {-Zane-}       , 5.75, 5.75, 5.75, 5.50, 6.25, 4.50, 5.50, 5.50, 5.00, 5.75, 5.75, 4.25, 6.00, 5.75, 4.50, 5.25, 4.00, 5.00, 5.25, 5.00
-  ]
+            ]
 
 matchValue :: Player -> Player -> Integer -> Double
 matchValue player1 player2 requiredWins = sum [
@@ -166,11 +168,54 @@ matchValue player1 player2 requiredWins = sum [
                     " * sum(", concatMap (\(c, i) -> show c ++ " * EV" ++ show i) counterPick2Options, ")"
                     ]
                 counterPick2 = sum $ map (\(c, i) -> c * (evs ! i)) counterPick2Options
-                rate = winRate ! (char1, char2) / 10.0
+                rate = winRate char1 char2
 
         evs = listArray bounds
             [ev c1 c2 w1 w2 | (c1, c2, w1, w2) <- range bounds]
         bounds = ((Argagarg, Argagarg, 0, 0), (Zane, Zane, requiredWins, requiredWins))
+
+optimalCounterPicks :: Array (Character, Int, Int) (Maybe Character, Double)
+optimalCounterPicks = evs
+    where
+        ev :: Character -> Int -> Int -> (Maybe Character, Double)
+        ev _ 0 _ = (Nothing, 1)
+        ev _ _ 0 = (Nothing, 0)
+        ev opp winsReq oppWinsReq = trace msg maxValue
+            where
+                maxValue = maximumBy (comparing snd) options
+                msg = concat [
+                    "EV", show (opp, winsReq, oppWinsReq)
+                  , " = (", show $ fst maxValue, ", ",  showFFloat (Just 2) (snd maxValue) ")"
+                  , " = max (\n  "
+                  , intercalate ",\n  " [
+                        concat [
+                            showFFloat (Just 2) rate ""
+                          , " * (1 - EV"
+                          , show (cp, oppWinsReq, winsReq - 1)
+                          , ") + "
+                          , showFFloat (Just 2) (1 - rate) ""
+                          , " * EV"
+                          , show (cp, winsReq, oppWinsReq - 1)
+                          ]
+                    | cp <- cast
+                    , let rate = winRate cp opp
+                    ]
+                  , ")"
+                  ]
+                options = [
+                        (Just cp, rate * winValue + (1 - rate) * loseValue)
+                    | cp <- cast
+                    , let rate = winRate cp opp
+                    , let winValue = 1 - (snd $ evs ! (cp, oppWinsReq, winsReq - 1))
+                    , let loseValue = snd $ evs ! (opp, winsReq, oppWinsReq - 1)
+                    ]
+
+        evs = listArray bounds [ev c w w' | (c, w, w') <- range bounds]
+        maxWins = 6
+        bounds = ((Argagarg, 0, 0), (Zane, maxWins, maxWins))
+
+optimalCounterPick :: Character -> Int -> Int -> (Maybe Character, Double)
+optimalCounterPick opp winsReq oppWinsReq = optimalCounterPicks ! (opp, winsReq, oppWinsReq)
 
 empty :: Ix i => (i, i) -> Array i Double
 empty = flip listArray (repeat 0)
