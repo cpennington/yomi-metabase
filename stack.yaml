@@ -15,4 +15,6 @@ extra-deps:
 - monad-mersenne-random-0.1
 - moo-1.0
 - tasty-discover-3.0.0
+- clustering-0.3.1
+- matrices-0.4.3
 resolver: lts-1.15

@@ -11,20 +11,26 @@ import Data.Ratio (numerator, denominator)
 import Numeric (showFFloat)
 import System.Environment (getArgs)
 import System.Random.Mersenne.Pure64 (newPureMT)
+import qualified Data.Vector.Unboxed as UV
+import qualified Data.Vector as V
+import Data.Maybe (fromJust)
 
 import Moo.GeneticAlgorithm.Run (runGA, loop)
 import Moo.GeneticAlgorithm.Types (Genome, Objective, ProblemType(..), Cond(..))
 import Moo.GeneticAlgorithm.Binary (
     decodeGray
+  , encodeGray
   , bitsNeeded
   , splitEvery
   , getRandomBinaryGenomes
   , twoPointCrossover
   , pointMutate
   , tournamentSelect
+  , stochasticUniversalSampling
   , bestFirst
   , nextGeneration
   )
+import AI.Clustering.KMeans (kmeansBy, KMeans(..), defaultKMeansOpts)
 
 import Debug.Trace
 
@@ -62,12 +68,15 @@ data Player = Player {
   }
     deriving (Show, Eq)
 
+blindRow p = [blindPicks p ! char | char <- cast]
+counterRow p c = [counterPicks p ! (c, c') | c' <- cast]
+
 prettyPrintPlayer :: Player -> String
 prettyPrintPlayer player = intercalate "\n" $ ("blind picks: " ++ blind) : counter
     where
-        blind = formatRow [blindPicks player ! char | char <- cast]
+        blind = formatRow $ blindRow player
         counter = [
-            (formatChar c) ++ (formatRow $ [counterPicks player ! (c, counter) | counter <- cast])
+            (formatChar c) ++ (formatRow $ counterRow player c)
           | c <- cast
           ]
         formatChar char = (show char) ++ ": " ++ replicate (11 - length (show char)) ' '
@@ -131,7 +140,7 @@ matchValue player1 player2 requiredWins = sum [
     where
         ev char1 char2 0 _ = 1
         ev char1 char2 _ 0 = 0
-        ev char1 char2 win1 win2 = trace valueMsg value
+        ev char1 char2 win1 win2 = {-trace valueMsg-} value
             where
                 valueMsg = "EV" ++ show (char1, char2, win1, win2) ++ " = " ++ (showFFloat (Just 3) value $ " = " ++ counterPick2Msg ++ " + " ++ counterPick1Msg)
                 value = rate * counterPick2 + (1 - rate) * counterPick1
@@ -167,8 +176,8 @@ empty :: Ix i => (i, i) -> Array i Double
 empty = flip listArray (repeat 0)
 
 
-chances = (0 :: Int, 127 :: Int)
-bitsPerChance = bitsNeeded chances
+chanceRange = (0 :: Int, 127 :: Int)
+bitsPerChance = bitsNeeded chanceRange
 characterRange = (fromEnum Argagarg, fromEnum Zane)
 bitsPerChar = bitsNeeded characterRange
 numCounters = 3 :: Int
@@ -176,49 +185,82 @@ numBlind = 10 :: Int
 bitsPerCounter = (bitsPerChance + bitsPerChar) * numCounters
 bitsPerBlind = (bitsPerChance + bitsPerChar) * numBlind
 
+decodeRow :: Int -> Genome Bool -> [(Character, Double)]
+decodeRow numChars bits = merged
+    where
+        merged = [
+            (head chars, sum ps)
+            | group <- groupedByChar
+            , let (chars, ps) = unzip group
+            ]
+        groupedByChar = groupBy ((==) `on` fst) $ sort $ zip cs ps
+        cs = map (toValidChar . decodeGray characterRange) charChunks
+        ps = normalize $ map (fromIntegral . decodeGray chanceRange) probChunks
+
+        charBits = take (bitsPerChar * numChars) bits
+        charChunks = splitEvery bitsPerChar charBits
+        toValidChar = toEnum . flip mod (fromEnum Zane)
+        probBits = drop (bitsPerChar * numChars) bits
+        probChunks = splitEvery bitsPerChance probBits
+
+normalize l = map (/ (max (sum l) 1)) l
+
 decodePlayer :: Genome Bool -> Player
 decodePlayer genome = Player blinds counters
     where
-        decodeRow numChars bits = merged
-            where
-                merged = [
-                    (head chars, sum ps)
-                  | group <- groupedByChar
-                  , let (chars, ps) = unzip group
-                  ]
-                groupedByChar = groupBy ((==) `on` fst) $ sort $ zip cs ps
-                cs = map (toValidChar . decodeGray characterRange) charChunks
-                ps = normalize $ map (fromIntegral . decodeGray chances) probChunks
-
-                charBits = take (bitsPerChar * numChars) bits
-                charChunks = splitEvery bitsPerChar charBits
-                toValidChar = toEnum . flip mod (fromEnum Zane)
-                probBits = drop (bitsPerChance * numChars) bits
-                probChunks = splitEvery bitsPerChance probBits
-
-
-        normalize l = map (/ (max (sum l) 1)) l
         blindRow = decodeRow numBlind $ take bitsPerBlind genome
         counterRows = map (decodeRow numCounters) $ splitEvery bitsPerCounter $ drop bitsPerBlind genome
         blinds = empty cast1D // blindRow
         counters = empty cast2D // [((c1, c2), p) | (c1, ps) <- zip cast counterRows, (c2, p) <- ps]
+
+encodeRow :: [(Character, Int)] -> [Bool]
+encodeRow r = concat $ map (encodeGray characterRange . fromEnum) cs ++ map (encodeGray chanceRange) ps
+    where
+        (cs, ps) = unzip r
+
+encodePlayer :: Player -> Genome Bool
+encodePlayer player = genes
+    where
+        genes = blindGenes ++ counterGenes
+        blindGenes = prepRow numBlind $ blindRow player
+        counterGenes = concat $ map (prepRow numCounters) [counterRow player c | c <- cast]
+
+        prepRow :: Int -> [Double] -> [Bool]
+        prepRow n = encodeRow . take n . sortBy (comparing (Down . snd)) . zip cast . map (floor . (127 *))
+
+
 
 evalMeta :: [Player] -> [Genome Bool] -> [Objective]
 evalMeta meta genomes = [sum [matchValue c m 4 | m <- meta] | c <- players]
     where
         players = map decodePlayer genomes
 
-selection popSize eliteSize = tournamentSelect Maximizing 2 (popSize - eliteSize)
+selection popSize eliteSize = stochasticUniversalSampling (popSize - eliteSize)
 crossover = twoPointCrossover 0.25
 mutation = pointMutate 0.25
-step meta popSize eliteSize = nextGeneration Maximizing (evalMeta [meta20XX]) (selection popSize eliteSize) eliteSize crossover mutation
+step meta popSize eliteSize = nextGeneration Maximizing (evalMeta $ map decodePlayer meta) (selection popSize eliteSize) eliteSize crossover mutation
 initialize meta randCount = do
     randomized <- getRandomBinaryGenomes randCount (bitsPerBlind + (bitsPerCounter * numCounters * length cast))
     return $ meta ++ randomized
 
+playerDist p1 p2 = sqrt $ sum $ zipWith (\x y -> (x - y)**2) (linear p1) (linear p2)
+    where
+        linear p = concat $ blindRow p : map (counterRow p) cast
+
+playerToVect :: Player -> UV.Vector Double
+playerToVect p = UV.fromList $ concat $ blindRow p : map (counterRow p) cast
+
+runYear :: Int -> Int -> Int -> Int -> [Genome Bool] -> IO [(Genome Bool, Double)]
 runYear popSize eliteSize generations metaSize meta = do
-    population <- runGA (initialize meta (popSize - metaSize)) (loop (Generations generations) (step meta popSize eliteSize))
-    return $ take metaSize $ nubBy ((==) `on` (\(p, g, v) -> p)) $ map (\(g, v) -> (decodePlayer g, g, v)) $ bestFirst Maximizing $ population
+    population <- runGA (initialize meta (popSize - length meta)) (loop (Generations generations) (step meta popSize eliteSize))
+    return $ topNMeta metaSize population
+
+topNMeta metaSize population = take metaSize $ nubBy ((==) `on` (decodePlayer . fst)) $ bestFirst Maximizing $ population
+
+clusterMeta metaSize population = take metaSize $ sortDescValue $ map (head . sortDescValue) $ fromJust $ clusters clustered
+    where
+        clustered = kmeansBy 10 (V.fromList population) (playerToVect . decodePlayer . fst) defaultKMeansOpts
+        sortDescValue = sortBy (comparing (Down . snd))
 
 
 meta20XX = Player
@@ -246,30 +288,36 @@ meta20XX = Player
       , ((Zane, Troq), 1.0)
       ])
 
-counterMeta = Player
+grave20XX = Player
     (empty cast1D // [(Grave, 1.0)])
     (empty cast2D // [
-        ((Argagarg, Geiger), 0.9130434783), ((Argagarg, Argagarg), 0.0869565217),
-        ((BBB, Menelker), 0.8292682927), ((BBB, Vendetta), 0.1707317073),
-        ((DeGrey, Gloria), 0.5842105263), ((DeGrey, Persephone), 0.4157894737),
-        ((Geiger, Grave), 1.0000000000),
-        ((Gloria, Grave), 0.6769230769), ((Gloria, Menelker), 0.3230769231),
-        ((Grave, Geiger), 0.5656565657), ((Grave, Jaina), 0.4343434343),
-        ((Gwen, Geiger), 0.6052631579), ((Gwen, Argagarg), 0.3947368421),
-        ((Jaina, Jaina), 0.5190839695), ((Jaina, Argagarg), 0.4732824427), ((Jaina, BBB), 0.0076335878),
-        ((Lum, Quince), 0.7241379310), ((Lum, Valerie), 0.2643678161), ((Lum, Onimaru), 0.0114942529),
-        ((Menelker, Midori), 0.6904761905), ((Menelker, Lum), 0.3095238095),
-        ((Midori, Troq), 0.7222222222), ((Midori, Geiger), 0.2777777778),
-        ((Onimaru, Rook), 0.7368421053), ((Onimaru, DeGrey), 0.2631578947),
-        ((Persephone, Midori), 0.5395348837), ((Persephone, Menelker), 0.4604651163),
-        ((Quince, Argagarg), 0.5757575758), ((Quince, Vendetta), 0.4242424242),
-        ((Rook, Persephone), 0.7222222222), ((Rook, Grave), 0.2777777778),
-        ((Setsuki, Menelker), 0.6854838710), ((Setsuki, Quince), 0.3145161290),
-        ((Troq, Geiger), 1.0000000000),
-        ((Valerie, Grave), 0.6129032258), ((Valerie, Rook), 0.3709677419), ((Valerie, Onimaru), 0.0161290323),
-        ((Vendetta, Gloria), 0.6449704142), ((Vendetta, Valerie), 0.3550295858),
-        ((Zane, Troq), 1.0000000000)
+        ((Argagarg, Zane), 1.0)
+      , ((BBB, Geiger), 1.0)
+      , ((DeGrey, Zane), 1.0)
+      , ((Geiger, Grave), 1.0)
+      , ((Gloria, Zane), 1.0)
+      , ((Grave, Zane), 1.0)
+      , ((Gwen, Troq), 1.0)
+      , ((Jaina, Zane), 1.0)
+      , ((Lum, DeGrey), 1.0)
+      , ((Menelker, Zane), 1.0)
+      , ((Midori, Geiger), 1.0)
+      , ((Onimaru, DeGrey), 1.0)
+      , ((Persephone, Zane), 1.0)
+      , ((Quince, Troq), 1.0)
+      , ((Rook, BBB), 1.0)
+      , ((Setsuki, Troq), 1.0)
+      , ((Troq, Geiger), 1.0)
+      , ((Valerie, Zane), 1.0)
+      , ((Vendetta, Zane), 1.0)
+      , ((Zane, Troq), 1.0)
     ])
+
+prettyPrintPop pop = mapM pp pop
+    where
+        pp (g, v) = do
+            putStrLn $ prettyPrintPlayer $ decodePlayer g
+            print v
 
 main = do
     args <- getArgs
@@ -279,34 +327,25 @@ main = do
         approxPathsPerMatch = ((numCounters * 2) ^ approxGamesPerMatch) * numBlind * numBlind
         totalPathsComputed = (matches * fromIntegral approxPathsPerMatch) * fromIntegral generations
     print totalPathsComputed
-    rnd <- newPureMT
-    let meta = evalRandom (initialize [] metaSize) rnd
+    let baselineMeta = [meta20XX, grave20XX]
 
-    -- putStrLn "Initial Meta"
-    -- mapM (putStrLn . prettyPrintPlayer) $ map decodePlayer meta
-    -- putStrLn ""
-
-    putStrLn "Meta Mirror Match"
-    print $ matchValue meta20XX meta20XX 4
+    putStrLn "grave20XX vs meta20XX"
+    print $ matchValue grave20XX meta20XX 4
     putStrLn ""
 
-    putStrLn "Counter Meta Match"
-    print $ matchValue counterMeta meta20XX 4
-    putStrLn ""
+    let nextYear = runYear popSize eliteSize generations metaSize
+    let runForever = iterateM $ \meta -> do
+            nextMeta <- nextYear meta
 
-    -- let nextYear = runYear popSize eliteSize generations metaSize
-    -- let runForever = iterateM $ \meta -> do
-    --         nextMeta <- nextYear meta
+            putStrLn "New Meta"
+            prettyPrintPop nextMeta
 
-    --         putStrLn "Top 3"
-    --         mapM (\(p, _, v) -> do
-    --             putStrLn $ prettyPrintPlayer p
-    --             print v
-    --             ) nextMeta
+            putStrLn "Vs Old Metas"
+            mapM (\oldMeta -> print $ map (\(p, _) -> matchValue (decodePlayer p) (decodePlayer oldMeta) 4) nextMeta) meta
 
-    --         return $ map (\(p, g, v) -> g) nextMeta
+            return $ meta ++ map fst nextMeta
 
-    -- runForever meta
+    runForever (map encodePlayer baselineMeta)
 
 -- main :: IO ()
 -- main = print $ matchValue p1 p2 4

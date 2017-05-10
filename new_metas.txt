@@ -1,0 +1,80 @@
+blind picks: Argagarg: 0.6516587678, DeGrey: 0.3246445498, Menelker: 0.0189573460, Gloria: 0.0047393365
+Argagarg:    Gloria: 0.8367346939, DeGrey: 0.1224489796, Troq: 0.0408163265
+BBB:         Lum: 1.0000000000
+DeGrey:      Argagarg: 0.8804780876, BBB: 0.1195219124
+Geiger:      Argagarg: 1.0000000000
+Gloria:      Argagarg: 1.0000000000
+Grave:       Argagarg: 1.0000000000
+Gwen:        Troq: 0.7847222222, Argagarg: 0.2152777778
+Jaina:       BBB: 0.7637795276, Argagarg: 0.2362204724
+Lum:         Lum: 0.9741379310, DeGrey: 0.0258620690
+Menelker:    Argagarg: 0.5000000000, BBB: 0.5000000000
+Midori:      Geiger: 1.0000000000
+Onimaru:     DeGrey: 0.4828897338, Persephone: 0.3764258555, BBB: 0.1406844106
+Persephone:  Grave: 0.5846994536, Persephone: 0.3387978142, Argagarg: 0.0765027322
+Quince:      Troq: 0.5422535211, Gloria: 0.2394366197, BBB: 0.2183098592
+Rook:        Argagarg: 0.4507772021, Rook: 0.3005181347, Onimaru: 0.2487046632
+Setsuki:     Troq: 1.0000000000
+Troq:        Geiger: 1.0000000000
+Valerie:     Argagarg: 0.8591549296, BBB: 0.1408450704
+Vendetta:    Vendetta: 0.6284153005, Jaina: 0.2622950820, Lum: 0.1092896175
+Zane:        Troq: 1.0000000000
+1.2073290560088956
+Vs Old Metas
+[0.5930808814082711]
+[0.6142481746006245]
+
+blind picks: Argagarg: 0.4732824427, DeGrey: 0.3511450382, Gloria: 0.1552162850, Persephone: 0.0203562341
+Argagarg:    Gloria: 0.9312977099, DeGrey: 0.0687022901
+BBB:         Lum: 0.7459016393, Jaina: 0.2540983607
+DeGrey:      Argagarg: 0.8560311284, BBB: 0.1439688716
+Geiger:      Argagarg: 1.0000000000
+Gloria:      BBB: 1.0000000000
+Grave:       Argagarg: 1.0000000000
+Gwen:        Persephone: 0.6694915254, Argagarg: 0.2033898305, BBB: 0.1271186441
+Jaina:       BBB: 0.8508771930, Argagarg: 0.1491228070
+Lum:         DeGrey: 0.9385964912, Lum: 0.0614035088
+Menelker:    Vendetta: 0.4469696970, DeGrey: 0.4318181818, Argagarg: 0.1212121212
+Midori:      Jaina: 0.4320000000, Troq: 0.3440000000, Menelker: 0.2240000000
+Onimaru:     Lum: 0.5794392523, Setsuki: 0.2616822430, BBB: 0.1588785047
+Persephone:  Menelker: 0.5539906103, BBB: 0.3990610329, Rook: 0.0469483568
+Quince:      DeGrey: 0.7663551402, Lum: 0.1308411215, Gloria: 0.1028037383
+Rook:        Grave: 0.4017857143, Geiger: 0.3616071429, Lum: 0.2366071429
+Setsuki:     Troq: 1.0000000000
+Troq:        Geiger: 1.0000000000
+Valerie:     Argagarg: 0.8591549296, Quince: 0.1408450704
+Vendetta:    Argagarg: 0.4761904762, Onimaru: 0.4391534392, Vendetta: 0.0846560847
+Zane:        Valerie: 1.0000000000
+1.8243293327861392
+Vs Old Metas
+[0.6010007458459324]
+[0.6223518810113481]
+[0.6009767059288588]
+
+blind picks: Argagarg: 0.7175792507, DeGrey: 0.1613832853, Gloria: 0.0979827089, Persephone: 0.0230547550
+Argagarg:    Gloria: 0.9312977099, DeGrey: 0.0687022901
+BBB:         Geiger: 1.0000000000
+DeGrey:      Vendetta: 0.6428571429, DeGrey: 0.1887755102, Argagarg: 0.1683673469
+Geiger:      Argagarg: 0.8936170213, Setsuki: 0.1063829787
+Gloria:      BBB: 1.0000000000
+Grave:       Argagarg: 0.9911504425, DeGrey: 0.0088495575
+Gwen:        Persephone: 0.7117117117, Argagarg: 0.2162162162, BBB: 0.0720720721
+Jaina:       Geiger: 1.0000000000
+Lum:         DeGrey: 0.9385964912, Lum: 0.0350877193, Gloria: 0.0263157895
+Menelker:    Vendetta: 0.4244604317, DeGrey: 0.4100719424, Argagarg: 0.1654676259
+Midori:      Jaina: 0.4377510040, Troq: 0.3253012048, Menelker: 0.2369477912
+Onimaru:     Lum: 0.5740740741, Argagarg: 0.2592592593, Rook: 0.1666666667
+Persephone:  Menelker: 0.5539906103, BBB: 0.3990610329, Rook: 0.0469483568
+Quince:      Geiger: 0.7663551402, Lum: 0.1308411215, Troq: 0.1028037383
+Rook:        Geiger: 0.5108695652, Lum: 0.2880434783, Grave: 0.2010869565
+Setsuki:     Troq: 0.9090909091, Argagarg: 0.0909090909
+Troq:        Geiger: 1.0000000000
+Valerie:     Argagarg: 0.8175182482, Quince: 0.1459854015, BBB: 0.0364963504
+Vendetta:    Onimaru: 0.6131386861, Argagarg: 0.3868613139
+Zane:        Vendetta: 1.0000000000
+2.3887677289527183
+Vs Old Metas
+[0.6015687153093786]
+[0.6227844685415935]
+[0.6097850022513961]
+[0.5546295428503502]

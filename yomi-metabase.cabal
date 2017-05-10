@@ -23,6 +23,8 @@ executable yomi-metabase
                      , mersenne-random-pure64
                      , monad-mersenne-random
                      , monad-extras
+                     , clustering
+                     , vector
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
 
 test-suite yomi-metabase-test
